@@ -1,0 +1,45 @@
+---
+# tasks file for ansible-kops
+- name: Create Kops directory
+  ansible.builtin.file:
+    path: /opt/kops
+    state: directory
+    mode: '0755'
+
+- name: Get latest Release from Kops
+  ansible.builtin.shell: curl -Lo /opt/kops/kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+  args:
+    warn: no
+
+- name: Change file ownership, group and permissions
+  ansible.builtin.file:
+    path: /opt/kops/kops
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Verify kops exists
+  stat: path=/opt/kops/kops
+  register: kops_stat
+
+- name: Configure kops on system bin.
+  file:
+    src: "/opt/kops/kops"
+    dest: "/usr/bin/kops"
+    state: link
+  when: kops_stat.stat.exists
+
+- name: Configure kops on system sbin.
+  file:
+    src: "/opt/kops/kops" 
+    dest: "/usr/sbin/kops"
+    state: link
+  when: kops_stat.stat.exists
+
+- command: kops version
+  register: result_kops
+  failed_when: false
+  changed_when: false
+
+- debug:
+    var: result_kops.stdout
